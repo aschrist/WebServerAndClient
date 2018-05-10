@@ -1,16 +1,17 @@
 from rest_framework import status
 from rest_framework import viewsets, mixins
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import detail_route
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
 
 from emstrack.mixins import BasePermissionMixin, \
     CreateModelUpdateByMixin, UpdateModelUpdateByMixin
+from login.viewsets import IsCreateByAdminOrSuper
 
 from .models import Location, Ambulance, LocationType, Call
 
-from .serializers import LocationSerializer, AmbulanceSerializer, \
-AmbulanceUpdateSerializer, CallSerializer
+from .serializers import LocationSerializer, AmbulanceSerializer, AmbulanceUpdateSerializer, CallSerializer
 
 
 # Django REST Framework Viewsets
@@ -144,16 +145,28 @@ class LocationTypeViewSet(mixins.ListModelMixin,
 
         return Location.objects.filter(type=type)
 
-#Call ViewSet
+
+# Call ViewSet
 
 class CallViewSet(mixins.ListModelMixin,
+                  CreateModelUpdateByMixin,
+                  BasePermissionMixin,
                   viewsets.GenericViewSet):
     """
     API endpoint for manipulating Calls.
 
     list:
-    Retrive list of calls.
+    Retrieve list of calls.
+
+    create:
+    Create new call instance.
     """
 
+    permission_classes = (IsAuthenticated,
+                          IsCreateByAdminOrSuper)
+
+    filter_field = 'ambulancecall__ambulance_id'
+    profile_field = 'ambulances'
     queryset = Call.objects.all()
+
     serializer_class = CallSerializer

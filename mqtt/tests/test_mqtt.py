@@ -9,7 +9,7 @@ from rest_framework.renderers import JSONRenderer
 import json
 
 from emstrack.tests.util import point2str
-from login.models import UserProfile, Client, ClientStatus, ClientLog, ClientActivity
+from login.models import Client, ClientStatus, ClientLog, ClientActivity
 from login.permissions import get_permissions
 
 from login.serializers import UserProfileSerializer
@@ -24,71 +24,11 @@ from hospital.models import Hospital, \
 from hospital.serializers import EquipmentSerializer, \
     HospitalSerializer, HospitalEquipmentSerializer
 
-from .client import MQTTTestCase, MQTTTestClient
+from .client import MQTTTestCase, MQTTTestClient, TestMQTT
 
 from ..subscribe import SubscribeClient
 
 logger = logging.getLogger(__name__)
-
-
-class TestMQTT:
-
-    def is_connected(self, client, MAX_TRIES=10):
-
-        # connected?
-        k = 0
-        while not client.connected and k < MAX_TRIES:
-            k += 1
-            client.loop()
-
-        self.assertEqual(client.connected, True)
-
-    def is_subscribed(self, client, MAX_TRIES=10):
-
-        client.loop_start()
-
-        # connected?
-        k = 0
-        while len(client.subscribed) and k < MAX_TRIES:
-            k += 1
-            time.sleep(1)
-
-        client.loop_stop()
-
-        self.assertEqual(len(client.subscribed), 0)
-
-    def loop(self, *clients, MAX_TRIES=10):
-
-        # logger.debug('clients = {}'.format(clients))
-        # logger.debug('MAX_TRIES = {}'.format(MAX_TRIES))
-
-        # starts clients
-        for client in clients:
-            client.loop_start()
-
-        # connected?
-        k = 0
-        done = False
-        while not done and k < MAX_TRIES:
-            done = True
-            for client in clients:
-                done = done and client.done()
-            k += 1
-            time.sleep(1)
-
-        # stop clients
-        for client in clients:
-            client.loop_stop()
-
-        if not done:
-            # logging.debug('NOT DONE:')
-            for client in clients:
-                if hasattr(client, 'expecting') and hasattr(client, 'publishing'):
-                    logging.debug(('expecting = {}, ' +
-                                   'publishing = {}').format(client.expecting,
-                                                             client.publishing))
-
-        self.assertEqual(done, True)
 
 
 class TestMQTTSeed(TestMQTT, MQTTTestCase):
@@ -143,7 +83,7 @@ class TestMQTTSeed(TestMQTT, MQTTTestCase):
         # Expect all hospital equipments
         for e in HospitalEquipment.objects.all():
             client.expect('hospital/{}/equipment/{}/data'.format(e.hospital.id,
-                                                                 e.equipment.name),
+                                                                 e.equipment.id),
                           JSONRenderer().render(HospitalEquipmentSerializer(e).data),
                           qos)
 
@@ -192,7 +132,7 @@ class TestMQTTSeed(TestMQTT, MQTTTestCase):
         # Expect all hospital equipments
         for e in HospitalEquipment.objects.all():
             client.expect('hospital/{}/equipment/{}/data'.format(e.hospital.id,
-                                                                 e.equipment.name),
+                                                                 e.equipment.id),
                           JSONRenderer().render(HospitalEquipmentSerializer(e).data),
                           qos)
 
@@ -241,7 +181,7 @@ class TestMQTTSeed(TestMQTT, MQTTTestCase):
         # Expect all hospital equipments
         for e in HospitalEquipment.objects.all():
             client.expect('hospital/{}/equipment/{}/data'.format(e.hospital.id,
-                                                                 e.equipment.name),
+                                                                 e.equipment.id),
                           JSONRenderer().render(HospitalEquipmentSerializer(e).data),
                           qos)
 
@@ -298,7 +238,7 @@ class TestMQTTSeed(TestMQTT, MQTTTestCase):
         # Expect all user hospital equipments
         for e in HospitalEquipment.objects.filter(hospital__id__in=can_read):
             client.expect('hospital/{}/equipment/{}/data'.format(e.hospital.id,
-                                                                 e.equipment.name),
+                                                                 e.equipment.id),
                           JSONRenderer().render(HospitalEquipmentSerializer(e).data),
                           qos)
 
@@ -349,7 +289,7 @@ class TestMQTTSeed(TestMQTT, MQTTTestCase):
         # Expect all user hospital equipments
         for e in HospitalEquipment.objects.filter(hospital__id__in=can_read):
             client.expect('hospital/{}/equipment/{}/data'.format(e.hospital.id,
-                                                                 e.equipment.name),
+                                                                 e.equipment.id),
                           JSONRenderer().render(HospitalEquipmentSerializer(e).data),
                           qos)
 
@@ -386,7 +326,7 @@ class TestMQTTPublish(TestMQTT, MQTTTestCase):
         topics = ('ambulance/{}/data'.format(self.a1.id),
                   'hospital/{}/data'.format(self.h1.id),
                   'hospital/{}/equipment/{}/data'.format(self.h1.id,
-                                                         self.e1.name))
+                                                         self.e1.id))
         [client.expect(t) for t in topics]
         self.is_subscribed(client)
 
@@ -460,7 +400,7 @@ class TestMQTTPublish(TestMQTT, MQTTTestCase):
         # subscribe to ambulance/+/data
         topics = ('hospital/{}/data'.format(self.h1.id),
                   'hospital/{}/equipment/{}/data'.format(self.h1.id,
-                                                         self.e1.name))
+                                                         self.e1.id))
         [client.expect(t) for t in topics]
         self.is_subscribed(client)
 
@@ -519,7 +459,7 @@ class TestMQTTPublish(TestMQTT, MQTTTestCase):
         topics = ('ambulance/{}/data'.format(self.a3.id),
                   'hospital/{}/data'.format(self.h1.id),
                   'hospital/{}/equipment/{}/data'.format(self.h1.id,
-                                                         self.e1.name))
+                                                         self.e1.id))
         [client.expect(t) for t in topics]
         self.is_subscribed(client)
 
@@ -693,13 +633,13 @@ class TestMQTTSubscribe(TestMQTT, MQTTTestCase):
 
         # retrieve message that is there already due to creation
         test_client.expect('hospital/{}/equipment/{}/data'.format(self.h1.id,
-                                                                  self.e1.name))
+                                                                  self.e1.id))
         self.is_subscribed(test_client)
 
         test_client.publish('user/{}/client/{}/hospital/{}/equipment/{}/data'.format(self.u1.username,
                                                                                      client_id,
                                                                                      self.h1.id,
-                                                                                     self.e1.name),
+                                                                                     self.e1.id),
                             json.dumps({
                                 'value': 'False',
                             }), qos=0)
@@ -710,7 +650,7 @@ class TestMQTTSubscribe(TestMQTT, MQTTTestCase):
 
         # expect update once
         test_client.expect('hospital/{}/equipment/{}/data'.format(self.h1.id,
-                                                                  self.e1.name))
+                                                                  self.e1.id))
         # process messages
         self.loop(test_client)
         subscribe_client.loop()
@@ -785,54 +725,55 @@ class TestMQTTSubscribe(TestMQTT, MQTTTestCase):
         self.assertEqual(obj[0].status, ClientStatus.O.name)
         self.assertEqual(obj[1].status, ClientStatus.F.name)
 
-        # generate ERROR: JSON formated incorrectly
-
-        test_client.expect('user/{}/client/{}/error'.format(broker['USERNAME'], client_id))
-        self.is_subscribed(test_client)
-
-        test_client.publish('user/{}/client/{}/ambulance/{}/data'.format(self.u1.username, 
-                                                                         client_id,
-                                                                         self.a1.id),
-                            '{ "value": ',
-                            qos=0)
-
-        # process messages
-        self.loop(test_client, subscribe_client)
-        subscribe_client.loop()
-
-        # generate ERROR: JSON formated incorrectly
-
-        test_client.expect('user/{}/client/{}/error'.format(broker['USERNAME'], client_id))
-        self.is_subscribed(test_client)
-
-        test_client.publish('user/{}/client/{}/hospital/{}/data'.format(self.u1.username,
-                                                                        client_id,
-                                                                        self.h1.id),
-                            '{ "value": ',
-                            qos=0)
-
-        # process messages
-        self.loop(test_client, subscribe_client)
-        subscribe_client.loop()
-
-        # generate ERROR: JSON formated incorrectly
-
-        test_client.expect('user/{}/client/{}/error'.format(broker['USERNAME'], client_id))
-        self.is_subscribed(test_client)
-
-        test_client.publish('user/{}/client/{}/hospital/{}/equipment/{}/data'.format(self.u1.username,
-                                                                                     client_id,
-                                                                                     self.h1.id,
-                                                                                     self.e1.name),
-                            '{ "value": ',
-                            qos=0)
-
-        # process messages
-        self.loop(test_client, subscribe_client)
-        subscribe_client.loop()
-
         test_invalid_serializer = False
         if test_invalid_serializer:
+
+            # generate ERROR: JSON formated incorrectly
+
+            test_client.expect('user/{}/client/{}/error'.format(broker['USERNAME'], client_id))
+            self.is_subscribed(test_client)
+
+            test_client.publish('user/{}/client/{}/ambulance/{}/data'.format(self.u1.username,
+                                                                             client_id,
+                                                                             self.a1.id),
+                                '{ "value": ',
+                                qos=0)
+
+            # process messages
+            self.loop(test_client)
+            subscribe_client.loop()
+
+            # generate ERROR: JSON formated incorrectly
+
+            test_client.expect('user/{}/client/{}/error'.format(broker['USERNAME'], client_id))
+            self.is_subscribed(test_client)
+
+            test_client.publish('user/{}/client/{}/hospital/{}/data'.format(self.u1.username,
+                                                                            client_id,
+                                                                            self.h1.id),
+                                '{ "value": ',
+                                qos=0)
+
+            # process messages
+            self.loop(test_client)
+            subscribe_client.loop()
+
+            # generate ERROR: JSON formated incorrectly
+
+            test_client.expect('user/{}/client/{}/error'.format(broker['USERNAME'], client_id))
+            self.is_subscribed(test_client)
+
+            test_client.publish('user/{}/client/{}/hospital/{}/equipment/{}/data'.format(self.u1.username,
+                                                                                         client_id,
+                                                                                         self.h1.id,
+                                                                                         self.e1.id),
+                                '{ "value": ',
+                                qos=0)
+
+            # process messages
+            self.loop(test_client)
+            subscribe_client.loop()
+
             # WARNING: The next tests prevent the test database from
             # being removed at the end of the test. It is not clear why
             # but it could be django bug related to the LiveServerThread
@@ -883,7 +824,7 @@ class TestMQTTSubscribe(TestMQTT, MQTTTestCase):
             test_client.publish('user/{}/client/{}/hospital/{}/equipment/{}/data'.format(self.u1.username,
                                                                                          client_id,
                                                                                          self.h1.id,
-                                                                                         'unknown'),
+                                                                                         -1),
                                 json.dumps({
                                     'comment': 'comment',
                                 }), qos=0)

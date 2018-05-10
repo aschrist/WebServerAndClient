@@ -7,7 +7,7 @@ from drf_extra_fields.geo_fields import PointField
 
 from login.models import Client
 from login.permissions import get_permissions
-from .models import Ambulance, AmbulanceUpdate, Call, Location, AmbulanceCallTime, Patient
+from .models import Ambulance, AmbulanceUpdate, Call, Location, AmbulanceCall, Patient, CallStatus
 from emstrack.latlon import calculate_orientation
 
 logger = logging.getLogger(__name__)
@@ -236,15 +236,19 @@ class LocationSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-# AmbulanceCallTime Serializer 
+# AmbulanceCall Serializer
 
-class AmbulanceCallTimeSerializer(serializers.ModelSerializer):
+class AmbulanceCallSerializer(serializers.ModelSerializer):
+
+    ambulance_id = serializers.PrimaryKeyRelatedField(queryset=Ambulance.objects.all(), read_only=False)
+    ambulanceupdate_set = AmbulanceUpdateSerializer(many=True, required=False)
 
     class Meta:
-        model = AmbulanceCallTime
-        fields = ['id', 'call_id', 'ambulance_id', 'dispatch_time', 
-                  'departure_time', 'patient_time', 'hospital_time', 
-                  'end_time']
+        model = AmbulanceCall
+        fields = ['id', 'ambulance_id',
+                  'created_at',
+                  'ambulanceupdate_set']
+        read_only_fields = ['created_at']
 
 
 # Patient Serializer
@@ -253,37 +257,67 @@ class PatientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        fields = ['id', 'call_id', 'name', 'age']
+        fields = ['id', 'name', 'age']
 
 
 # Call serializer
 
 class CallSerializer(serializers.ModelSerializer):
-    
-    patient_set = PatientSerializer(many = True)
-    ambulancecalltime_set = AmbulanceCallTimeSerializer(many=True)
+
+    patient_set = PatientSerializer(many=True, required=False)
+    ambulancecall_set = AmbulanceCallSerializer(many=True, required=False)
     location = PointField(required=False)
-    
+
     class Meta:
         model = Call
         fields = ['id', 'status', 'details', 'priority',
                   'number', 'street', 'unit', 'neighborhood',
                   'city', 'state', 'zipcode', 'country',
-                  'location', 'created_at', 'ended_at', 
-                  'comment', 'updated_by', 'updated_on', 
-                  'ambulancecalltime_set', 'patient_set']
-        read_only_fields = ['updated_by']
+                  'location',
+                  'created_at',
+                  'pending_at', 'started_at', 'ended_at',
+                  'comment', 'updated_by', 'updated_on',
+                  'ambulancecall_set', 'patient_set']
+        read_only_fields = ['created_at', 'updated_by']
 
-    def create(self, data):
+    def create(self, validated_data):
 
         # Get current user.
-        user = data['updated_by']
+        user = validated_data['updated_by']
 
         # Make sure user is Super.
         if not user.is_superuser:
             raise PermissionDenied()
+        
+        ambulancecall_set = validated_data.pop('ambulancecall_set', [])
+        patient_set = validated_data.pop('patient_set', [])
 
-        return super().create(data)
+        # Makes sure database rolls back in case of integrity or other errors
+        with transaction.atomic():
+
+            # creates call first, do not publish
+            call = Call(**validated_data)
+            call.save(publish=False)
+
+            # then patients, do not publish
+            for patient in patient_set:
+                obj = Patient(call=call, **patient)
+                obj.save(publish=False)
+
+            # then add ambulances, do not publish
+            for ambulancecall in ambulancecall_set:
+                ambulance = ambulancecall.pop('ambulance_id')
+                obj = AmbulanceCall(call=call, ambulance=ambulance, **ambulancecall)
+                obj.save(publish=False)
+
+            # publish call to mqtt only after all includes have succeeded
+            call.publish()
+
+            # then publish ambulances
+            for ambulancecall in call.ambulancecall_set.all():
+                ambulancecall.publish()
+
+        return call
 
     def update(self, instance, data):
 
@@ -297,3 +331,8 @@ class CallSerializer(serializers.ModelSerializer):
                 raise PermissionDenied()
 
         return super().update(instance, data)
+
+    def validate(self, data):
+        if 'status' in data and data['status'] != CallStatus.P.name and not ('ambulancecall_set' in data):
+            raise serializers.ValidationError('Started call and ended call must have ambulancecall_set')
+        return data

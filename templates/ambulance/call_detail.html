@@ -1,5 +1,15 @@
-{% extends "base.html" %}
+{% extends "leaflet/base.html" %}
+
 {% load static %}
+
+{% block leaflethead %}
+    <script>
+        var call_location_x = {{ call.location.x|safe }};
+        var call_location_y = {{ call.location.y|safe }};
+        var call_id = {{ call.id|safe }};
+        var APIBaseUrl = '{% url 'index' %}api/';
+    </script>
+{% endblock %}
 
 {% block content %}
 
@@ -12,12 +22,8 @@
             <h3>Details:</h3>
 
             <p>
-                <strong>Identifier:</strong>
-                {{ call.id }}
-            </p>
-            <p>
                 <strong>Status:</strong>
-                {{ call.status }}
+                {{ call.status|get_call_status }}
             </p>
             <p>
                 <strong>Details:</strong>
@@ -32,12 +38,35 @@
                 {{ call.created_at }}
             </p>
             <p>
+                <strong>Pending at:</strong>
+                {{ call.pending_at }}
+            </p>
+            <p>
+                <strong>Started at:</strong>
+                {{ call.started_at }}
+            </p>
+            <p>
                 <strong>Ended at:</strong>
                 {{ call.ended_at }}
             </p>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col">
+
+            <h3>
+                Call Progress:
+            </h3>
+
+            <div id="map" class="my-2" style="height: 600px"></div>
+
+        </div>
+    </div>
+
 </div>
 
-{% endblock %}
+<script src="{% static 'leaflet/js/LeafletWidget.js' %}"></script>
+<script src="{% static 'js/call_detail.js' %}"></script>
 
+{% endblock %}

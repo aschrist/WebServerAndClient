@@ -76,11 +76,15 @@ var ambulance_settings = [
 
 var ambulance_icons = {};
 var ambulance_buttons = {};
-Object.keys(ambulance_status).forEach(function(type, index) {
-    var settings = ambulance_settings[index];
-    ambulance_icons[type] = settings[0];
-    ambulance_buttons[type] = settings[1];
-});
+for (var key in ambulance_css) {
+    // skip loop if the property is from prototype
+    if (!ambulance_css.hasOwnProperty(key))
+        continue;
+
+    var settings = ambulance_css[key];
+    ambulance_icons[key] = L.icon(settings['icon']);
+    ambulance_buttons[key] = settings['class'];
+}
 
 var hospitalIcon = L.icon({
 	iconUrl: '/static/icons/maki/hospital-15.svg',
@@ -267,14 +271,14 @@ function onConnect() {
 
         // Subscribe to hospitals
         $.each(data.hospitals, function (index) {
-            let topicName = "hospital/" + data.hospitals[index].hospital_id + "/data";
+            var topicName = "hospital/" + data.hospitals[index].hospital_id + "/data";
             mqttClient.subscribe(topicName);
             console.log('Subscribing to topic: ' + topicName);
         });
 
         // Subscribe to ambulances
         $.each(data.ambulances, function (index) {
-            let topicName = "ambulance/" + data.ambulances[index].ambulance_id + "/data";
+            var topicName = "ambulance/" + data.ambulances[index].ambulance_id + "/data";
             mqttClient.subscribe(topicName);
             console.log('Subscribing to topic: ' + topicName);
         });
@@ -301,7 +305,7 @@ function onConnect() {
 
         // Send message
         var id = $('#ambulance-detail-id').val();
-        var topic = "user/" + username + "/ambulance/" + id + "/data";
+        var topic = "user/" + username + "/client/" + clientId + "/ambulance/" + id + "/data";
         var message = new Paho.MQTT.Message(status);
         message.destinationName = topic
         message.qos = 2;
@@ -388,12 +392,12 @@ function onMessageArrived(message) {
         '" arrived');
 
     // split topic
-    let topic = message.destinationName.split("/");
+    var topic = message.destinationName.split("/");
 
     try {
 
         // parse message
-        let data = JSON.parse(message.payloadString);
+        var data = JSON.parse(message.payloadString);
 
         // Look for ambulance/{id}/data
         if (topic[0] === 'ambulance' &&
@@ -418,7 +422,7 @@ function onMessageArrived(message) {
 function updateAmbulance(ambulance) {
 
     // retrieve id
-    let id = ambulance.id;
+    var id = ambulance.id;
 
     // already exists?
     if (id in ambulances) {
@@ -436,11 +440,17 @@ function updateAmbulance(ambulance) {
         // Overwrite ambulance
         ambulance = ambulances[id]
 
-        // Updated button classes
-        $("#grid-button-" + id).attr("class",
-            "btn btn-sm " + ambulance_buttons[ambulance.status] +
+        // Updated grid button class
+        var btnClass = 'btn btn-sm ' + ambulance_buttons[ambulance.status]
             + ' status-' + ambulance.status
-            + ' capability-' + ambulance.capability + '"');
+            + ' capability-' + ambulance.capability;
+
+        console.log('Updating ambulance "' + ambulance.identifier +
+        '[id=' + ambulance.id + ', status=' + ambulance.status + ', class=' + btnClass + ']"' +
+        ' on grid');
+
+        // Updated button classes
+        $("#grid-button-" + id).attr("class", btnClass);
 
     } else {
 
@@ -459,7 +469,7 @@ function updateAmbulance(ambulance) {
 function updateHospital(hospital) {
 
     // retrieve id
-    let id = hospital.id;
+    var id = hospital.id;
 
     // already exists?
     if (id in hospitals) {
@@ -484,7 +494,7 @@ function updateHospital(hospital) {
 function addAmbulanceToGrid(ambulance) {
 
     console.log('Adding ambulance "' + ambulance.identifier +
-        '[id=' + ambulance.id + ']"' +
+        '[id=' + ambulance.id + ', status=' + ambulance.status + ', btn=' + ambulance_buttons[ambulance.status] + ']"' +
         ' to grid');
 
     // Add button to ambulance grid
@@ -588,7 +598,7 @@ function addHospitalToMap(hospital) {
     hospitals[hospital.id] = hospital;
 
     // set icon by status
-    let coloredIcon = hospitalIcon;
+    var coloredIcon = hospitalIcon;
 
     // If hospital marker doesn't exist
     hospitalMarkers[hospital.id] = L.marker([hospital.location.latitude,

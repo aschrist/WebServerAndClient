@@ -104,6 +104,60 @@ class AmbulanceUpdateView(LoginRequiredMixin,
         return self.object.get_absolute_url()
 
 
+# Ambulance css information
+AmbulanceCSS = {
+    'UK': {
+        'icon': {
+            'iconUrl': '/static/icons/cars/ambulance_blue.svg',
+            'iconSize': [15, 30],
+        },
+        'class': 'btn-primary'
+    },
+    'AV': {
+        'icon': {
+            'iconUrl': '/static/icons/cars/ambulance_green.svg',
+            'iconSize': [15, 30],
+        },
+        'class': 'btn-success'
+    },
+    'OS': {
+        'icon': {
+            'iconUrl': '/static/icons/cars/ambulance_gray.svg',
+            'iconSize': [15, 30],
+        },
+        'class': 'btn-secondary'
+    },
+    'PB': {
+        'icon': {
+            'iconUrl': '/static/icons/cars/ambulance_red.svg',
+            'iconSize': [15, 30],
+        },
+        'class': 'btn-danger'
+    },
+    'AP': {
+        'icon': {
+            'iconUrl': '/static/icons/cars/ambulance_orange.svg',
+            'iconSize': [15, 30],
+        },
+        'class': 'btn-warning'
+    },
+    'HB': {
+        'icon': {
+            'iconUrl': '/static/icons/cars/ambulance_purple.svg',
+            'iconSize': [15, 30],
+        },
+        'class': 'btn-info'
+    },
+    'AH': {
+        'icon': {
+            'iconUrl': '/static/icons/cars/ambulance_yellow.svg',
+            'iconSize': [15, 30],
+        },
+        'class': 'btn-yellow'
+    }
+}
+
+
 class AmbulanceMap(TemplateView):
     template_name = 'ambulance/map.html'
 
@@ -118,6 +172,7 @@ class AmbulanceMap(TemplateView):
         context['broker_websockets_host'] = settings.MQTT['BROKER_WEBSOCKETS_HOST']
         context['broker_websockets_port'] = settings.MQTT['BROKER_WEBSOCKETS_PORT']
         context['client_id'] = 'javascript_client_' + uuid.uuid4().hex
+        context['ambulance_css'] = AmbulanceCSS
         return context
 
 
@@ -156,20 +211,32 @@ class LocationAdminUpdateView(SuccessMessageMixin,
     def get_success_url(self):
         return self.object.get_absolute_url()
 
+
+# Call permissions
+class CallPermissionMixin(BasePermissionMixin):
+
+    filter_field = 'ambulancecall__ambulance_id'
+    profile_field = 'ambulances'
+    queryset = Call.objects.all()
+
+
 # Call ListView
-class CallListView(ListView):
+class CallListView(CallPermissionMixin,
+                   ListView):
     model = Call
 
+
 # Call DetailView
-class CallDetailView(DetailView):
+class CallDetailView(CallPermissionMixin,
+                     DetailView):
     model = Call
 
 
 # Admin page
-class AdminView(ListView):
-    model = Call
-    template_name = 'ambulance/dispatch_list.html'
-    context_object_name = "ambulance_call"
+# class AdminView(ListView):
+#    model = Call
+#   template_name = 'ambulance/dispatch_list.html'
+#    context_object_name = "ambulance_call"
 
 
 # # AmbulanceStatus list page
