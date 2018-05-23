@@ -19,6 +19,13 @@ $(function () {
         addMarkerCall(map, call_location_y, call_location_x);
         
     } else if(call_status == "Ended") {
+
+        ambulances.forEach(id => {
+            console.log("------------------------------>"); 
+            console.log(id); 
+            retrieveAmbulances(id);
+        });
+        addMarkerCall(map, call_location_y, call_location_x);
         
     } else {
         console.error("Call status " + call_status + " not handled");
