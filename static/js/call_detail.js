@@ -13,6 +13,11 @@ $(function () {
         addMarkerCall(map, call_location_y, call_location_x);
     } else if(call_status == "Started") {
 
+        ambulances.forEach(id => {
+            retrieveAmbulances(id);
+        });
+        addMarkerCall(map, call_location_y, call_location_x);
+        
     } else if(call_status == "Ended") {
         
     } else {
@@ -25,12 +30,12 @@ function retrieveAmbulances(ambulance_id) {
 
     // Build url
     var url = APIBaseUrl + 'ambulance/' + ambulance_id + '/updates';
-    if (page != null) {
-        url += "?page=" + page;
-        if (page_size != null)
-            url += "&page_size=" + page_size;
-    } else if (page_size != null)
-        url += "?page_size=" + page_size;
+    // if (page != null) {
+    //     url += "?page=" + page;
+    //     if (page_size != null)
+    //         url += "&page_size=" + page_size;
+    // } else if (page_size != null)
+    //     url += "?page_size=" + page_size;
 
     $.ajax({
         type: 'GET',
