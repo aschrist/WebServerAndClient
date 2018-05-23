@@ -66,6 +66,7 @@ function retrieveAmbulances(ambulance_id) {
     })
         .done(function (data) {
             if (console && console.log) {
+                console.log(ambulance_id); 
                 console.log("Done retrieving ambulance data from API");
             }
         });
