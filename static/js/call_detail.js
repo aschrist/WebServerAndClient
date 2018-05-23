@@ -11,6 +11,7 @@ $(function () {
 
     if(call_status == "Pending") {
         addMarkerCall(map, call_location_y, call_location_x);
+        console.log("got called in pending");
     } else if(call_status == "Started") {
 
         console.log("got called in started");
@@ -21,8 +22,10 @@ $(function () {
         
     } else if(call_status == "Ended") {
 
+        console.log("got called in ended");
         ambulances.forEach(id => {
           
+            console.log("got called in ended");    
             console.log(id); 
             retrieveAmbulances(id);
         });
