@@ -21,7 +21,7 @@ $(function () {
     } else if(call_status == "Ended") {
 
         ambulances.forEach(id => {
-            console.log("------------------------------>"); 
+          
             console.log(id); 
             retrieveAmbulances(id);
         });
