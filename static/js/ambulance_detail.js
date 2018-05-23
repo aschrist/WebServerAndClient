@@ -44,7 +44,7 @@ function retrieveAmbulances(ambulance_id) {
         },
 
         success: function (data) {
-
+            console.log("in ambu_details, retrieveAmbu, success");
             console.log('Got data from API')
 
             addAmbulanceRoute(data)
