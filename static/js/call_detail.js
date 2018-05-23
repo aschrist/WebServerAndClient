@@ -11,6 +11,8 @@ $(function () {
     var i = 0; 
     if(call_status == "Pending") {
         for(i = 0; i < 100; i++) {
+            console.log(call_location_y); 
+            console.log(call_location_x); 
             addMarkerCall(map, call_location_y+i, call_location_x+i);
             console.log("got called in pending");    
         }
