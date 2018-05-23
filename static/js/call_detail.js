@@ -13,6 +13,7 @@ $(function () {
         addMarkerCall(map, call_location_y, call_location_x);
     } else if(call_status == "Started") {
 
+        console.log("got called in started");
         ambulances.forEach(id => {
             retrieveAmbulances(id);
         });
