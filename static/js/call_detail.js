@@ -10,7 +10,7 @@ $(function () {
     map = new LeafletPolylineWidget(options);
     var i = 0; 
     if(call_status == "Pending") {
-            addMarkerCall(map, call_location_y, call_location_x+i);
+            addMarkerCall(map, call_location_y, call_location_x);
         
     } else if(call_status == "Started") {
 
