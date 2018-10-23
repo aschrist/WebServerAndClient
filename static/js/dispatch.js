@@ -369,17 +369,12 @@ function dispatchCall() {
                 // add age
                 obj['age'] = parseInt(patient[1]);
             patients.push(obj);
-        }
-    if (currentPatients.length==0) {
-        var name = $('#patient-' + index + '-name').val().trim();
+        }  
+    // is name not empty?
+    var name = $('#patient-' + index + '-name').val().trim();
+    if (name) {
         var age = $('#patient-' + index + '-age').val().trim();
-        // is name empty?
-        if (!name) {
-            bsalert('Empty name');
-            return;
-        }
         // add patient
-        var patient = [name, age];
         patients.push({'name': name, 'age':parseInt(age)});
     }
     form['patient_set'] = patients;
