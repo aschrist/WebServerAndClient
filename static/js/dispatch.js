@@ -376,9 +376,12 @@ function dispatchCall() {
     if (name) {
         var age = $('#patient-' + newPatientIndex + '-age').val().trim();
         // add patient
-        patients.push({'name': name, 'age':parseInt(age)});
+        var patient = {'name': name, 'age':parseInt(age)};
+        form['patient_set'] = patients.concat(patient);
+    } else {
+        form['patient_set'] = patients;
     }
-    form['patient_set'] = patients;
+    
 
     // make json call
     var postJsonUrl = APIBaseUrl + 'call/';
