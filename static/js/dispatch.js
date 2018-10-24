@@ -372,6 +372,7 @@ function dispatchCall() {
         }  
     // is name not empty?
     var name = $('#patient-' + newPatientIndex + '-name').val().trim();
+    console.log(name); 
     if (name) {
         var age = $('#patient-' + newPatientIndex + '-age').val().trim();
         // add patient
