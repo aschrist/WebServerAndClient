@@ -180,6 +180,11 @@ class BaseClient:
         # try to publish
         result = self.client.publish(topic, payload, qos, retain)
         if result.rc != mqtt.MQTT_ERR_SUCCESS:
+
+            # release lock
+            self.publish_lock.release()
+
+            # raise exception
             raise MQTTException('Could not publish to topic (rc = {})'.format(result.rc),
                                 result.rc)
 
