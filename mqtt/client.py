@@ -133,40 +133,38 @@ class BaseClient:
         while len(self.buffer) > 0:
             # attempt to send buffered messages
             message = self.buffer.pop(0)
-            result = self.client.publish(**message)
-            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+            try:
+                self.__publish__(**message)
+                self.number_of_unsuccessful_attempts = 0
+            except MQTTException:
                 # put message back and increment counter
                 self.buffer.insert(0, message)
                 self.number_of_unsuccessful_attempts += 1
-            else:
-                self.number_of_unsuccessful_attempts = 0
+                break
 
         # release lock
         self.buffer_lock.release()
 
+        # was unsuccessful?
         if self.number_of_unsuccessful_attempts > RETRY_MAX_ATTEMPTS:
             raise MQTTException('Could not publish to MQTT broker.' +
                                 'Tried {} times before failing'.format(self.number_of_unsuccessful_attempts))
 
-    def publish(self, topic, payload=None, qos=0, retain=False):
-
-        # are there any messages on the buffer?
-        if len(self.buffer) > 0:
-
-            # attempt to send buffered messages
-            self.send_buffer()
-
         # was unsuccessful?
         if self.number_of_unsuccessful_attempts:
 
-            # add to buffer
-            self.add_to_buffer(topic, payload, qos, retain)
-
-            # set up timer
+            # set up timer to try again
             threading.Timer(RETRY_TIMER_SECONDS, self.send_buffer).start()
 
-            # then quit
-            return
+    def publish(self, topic, payload=None, qos=0, retain=False):
+
+        # add to buffer
+        self.add_to_buffer(topic, payload, qos, retain)
+
+        # attempt to send buffered messages
+        self.send_buffer()
+
+    def __publish__(self, topic, payload=None, qos=0, retain=False):
 
         # NOTE: The whole forgive mid thing is necessary because
         # on_publish was getting called before publish ended
@@ -176,7 +174,7 @@ class BaseClient:
 
         # try to publish
         result = self.client.publish(topic, payload, qos, retain)
-        if result.rc:
+        if result.rc != mqtt.MQTT_ERR_SUCCESS:
             raise MQTTException('Could not publish to topic (rc = {})'.format(result.rc),
                                 result.rc)
 
