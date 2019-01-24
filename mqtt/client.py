@@ -136,8 +136,9 @@ class BaseClient:
             try:
                 self.__publish__(**message)
                 self.number_of_unsuccessful_attempts = 0
-            except MQTTException:
+            except MQTTException as e:
                 # put message back and increment counter
+                logger.debug('Caught exception: ' + str(e))
                 self.buffer.insert(0, message)
                 self.number_of_unsuccessful_attempts += 1
                 break
